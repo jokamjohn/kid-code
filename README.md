@@ -29,12 +29,70 @@ An interactive web app that teaches kids (ages 6–14) computing basics, HTML, C
 
 ---
 
-## Local Development
+## Docker Development (recommended)
+
+The fastest way to get both servers running without installing Node locally.
 
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/kid-code.git
+git clone https://github.com/jokamjohn/kid-code.git
+cd kid-code
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.docker .env
+```
+
+Edit `.env` and fill in your Supabase URL, keys, and Anthropic API key.
+
+### 3. Start everything
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend (Vite) | http://localhost:5173 |
+| API (NestJS) | http://localhost:3030/api |
+
+Both servers support **hot reload** — edit files locally and changes reflect instantly inside the containers.
+
+### Useful Docker commands
+
+```bash
+# Start in background
+docker compose up -d
+
+# View logs
+docker compose logs -f
+docker compose logs -f api   # API only
+docker compose logs -f web   # Frontend only
+
+# Rebuild after adding npm packages
+docker compose up --build
+
+# Stop everything
+docker compose down
+
+# Install a new frontend package
+docker compose run --rm web npm install <package>
+
+# Install a new API package
+docker compose run --rm api npm install <package>
+```
+
+---
+
+## Local Development (without Docker)
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/jokamjohn/kid-code.git
 cd kid-code
 ```
 

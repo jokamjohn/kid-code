@@ -1,0 +1,59 @@
+name: kidcode
+
+services:
+  # ── Frontend (Vite dev server) ──────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./src:/app/src                  # hot-reload source
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tailwind.config.ts:/app/tailwind.config.ts
+      - ./postcss.config.js:/app/postcss.config.js
+      - ./tsconfig.json:/app/tsconfig.json
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_GITHUB_CLIENT_ID=${VITE_GITHUB_CLIENT_ID}
+      - VITE_API_BASE_URL=http://localhost:3030
+      # Route proxy through the api service, not localhost
+      - API_PROXY_TARGET=http://api:3030
+    depends_on:
+      - api
+    networks:
+      - kidcode
+
+  # ── API (NestJS dev server) ─────────────────────────────────────────────────
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./api/src:/app/src              # hot-reload source
+      - ./api/tsconfig.json:/app/tsconfig.json
+      - ./api/tsconfig.build.json:/app/tsconfig.build.json
+      - ./api/nest-cli.json:/app/nest-cli.json
+    environment:
+      - NODE_ENV=development
+      - PORT=3030
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://localhost:3030/api/github/callback}
+      - SPA_ORIGIN=${SPA_ORIGIN:-http://localhost:5173}
+    networks:
+      - kidcode
+
+networks:
+  kidcode:
+    driver: bridge
