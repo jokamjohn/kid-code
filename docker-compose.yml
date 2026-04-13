@@ -201,8 +201,8 @@ services:
       - ./postcss.config.js:/app/postcss.config.js
       - ./tsconfig.json:/app/tsconfig.json
     environment:
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
-      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-http://localhost:54321}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMTQxNzM4MCwiZXhwIjo0Nzc3MDkxMzgwfQ.K5kqIqpxnIU5bkQVqDXiHbY5-HCWvTZ3Gjc6Vq7pJrs}
       - VITE_GITHUB_CLIENT_ID=${VITE_GITHUB_CLIENT_ID:-}
       - VITE_API_BASE_URL=http://localhost:3030
       - API_PROXY_TARGET=http://api:3030
@@ -228,8 +228,8 @@ services:
       - NODE_ENV=development
       - PORT=3030
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - SUPABASE_URL=${SUPABASE_URL:-http://kong:8000}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjIxNDE3MzgwLCJleHAiOjQ3NzcwOTEzODB9.gcEFAhIbNXkFGjfZKH1PD5S26wA4kJdV3kMm6M0rp_E}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
       - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
       - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://localhost:3030/api/github/callback}
