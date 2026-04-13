@@ -1,3 +1,16 @@
+# ---- Dev ----
+FROM node:22-alpine AS dev
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+# Source is mounted as a volume at runtime
+EXPOSE 3030
+
+CMD ["npm", "run", "start:dev"]
+
 # ---- Builder ----
 FROM node:22-alpine AS builder
 
