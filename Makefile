@@ -1,5 +1,5 @@
 .PHONY: dev dev-local down down-clean logs logs-web logs-api build \
-        install install-api lint lint-api test-api migrate reset \
+        install lint lint-api test-api migrate reset \
         config config-local help
 
 # ── Default ───────────────────────────────────────────────────────────────────
@@ -57,45 +57,41 @@ build:
 
 ## Build the frontend for production
 build-web:
-	npm run build
+	pnpm run build
 
 ## Build the API for production (type check)
 build-api:
-	cd api && npm run build
+	pnpm --filter api run build
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 
-## Install frontend npm dependencies
+## Install all dependencies (frontend + API) with one command
 install:
-	npm install
-
-## Install API npm dependencies
-install-api:
-	cd api && npm install
+	pnpm install
 
 ## Install a frontend package:  make add PKG=framer-motion
 add:
-	docker compose run --rm web npm install $(PKG)
+	pnpm add $(PKG)
 
 ## Install an API package:  make add-api PKG=@nestjs/throttler
 add-api:
-	docker compose run --rm api npm install $(PKG)
+	pnpm add $(PKG) --filter api
 
 # ── Code quality ──────────────────────────────────────────────────────────────
 
 ## Lint the frontend
 lint:
-	npm run lint
+	pnpm run lint
 
 ## Lint the API
 lint-api:
-	cd api && npm run lint
+	pnpm --filter api run lint
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 
 ## Run API unit tests
 test-api:
-	cd api && npm test
+	pnpm --filter api run test
 
 # ── Database ──────────────────────────────────────────────────────────────────
 

@@ -211,16 +211,16 @@ services:
 
   api:
     build:
-      context: ./api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: api/Dockerfile
       target: dev
     ports:
       - "3030:3030"
     volumes:
-      - ./api/src:/app/src
-      - ./api/tsconfig.json:/app/tsconfig.json
-      - ./api/tsconfig.build.json:/app/tsconfig.build.json
-      - ./api/nest-cli.json:/app/nest-cli.json
+      - ./api/src:/app/api/src
+      - ./api/tsconfig.json:/app/api/tsconfig.json
+      - ./api/tsconfig.build.json:/app/api/tsconfig.build.json
+      - ./api/nest-cli.json:/app/api/nest-cli.json
     environment:
       - NODE_ENV=development
       - PORT=3030
