@@ -5,6 +5,7 @@ import { Send, RotateCcw } from 'lucide-react'
 import { chatMessagesAtom, tutorLoadingAtom } from '@/atoms/tutorAtoms'
 import { mascotMoodAtom } from '@/atoms/mascotAtoms'
 import { profileAtom } from '@/atoms/userAtoms'
+import { apiClient } from '@/lib/apiClient'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 
@@ -16,8 +17,6 @@ const SUGGESTED = [
   'How does the internet work?',
   'What is binary?',
 ]
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3030'
 
 export default function Tutor() {
   const [messages, setMessages] = useAtom(chatMessagesAtom)
@@ -43,10 +42,9 @@ export default function Tutor() {
     setMessages(prev => [...prev, { id: assistantId, role: 'assistant', content: '', timestamp: new Date().toISOString() }])
 
     try {
-      const res = await fetch(`${API_BASE}/api/tutor`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, context: { ageGroup: profile?.ageGroup ?? 'middle' } }),
+      const res = await apiClient.stream('/api/tutor', {
+        question: text,
+        context: { ageGroup: profile?.ageGroup ?? 'middle' },
       })
 
       if (!res.ok || !res.body) throw new Error('API error')

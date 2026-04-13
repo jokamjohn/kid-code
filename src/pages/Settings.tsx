@@ -1,11 +1,13 @@
-import { useAtom } from 'jotai'
+import { useAtom, useSetAtom } from 'jotai'
 import { motion } from 'framer-motion'
 import { Moon, Sun, Github, LogOut } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { darkModeAtom, applyDarkMode } from '@/atoms/themeAtoms'
 import { profileAtom } from '@/atoms/userAtoms'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/apiClient'
 import { useNavigate } from 'react-router-dom'
 
 const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
@@ -13,7 +15,40 @@ const GITHUB_CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 export default function Settings() {
   const [dark, setDark] = useAtom(darkModeAtom)
   const [profile] = useAtom(profileAtom)
+  const setProfile = useSetAtom(profileAtom)
   const navigate = useNavigate()
+  const [githubConnecting, setGithubConnecting] = useState(false)
+
+  // Handle GitHub OAuth redirect: /settings?github=connected&gh_token=...&gh_username=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('github') !== 'connected') return
+
+    const ghToken = params.get('gh_token')
+    const ghUsername = params.get('gh_username')
+    if (!ghToken || !ghUsername) return
+
+    setGithubConnecting(true)
+    // Clean up the query string immediately so a reload doesn't re-trigger
+    history.replaceState({}, '', '/settings')
+
+    apiClient.post('/api/github/connect', { githubToken: ghToken, githubUsername: ghUsername })
+      .then(() => apiClient.get<any>('/api/profile'))
+      .then(data => {
+        setProfile({
+          id: data.id,
+          username: data.username ?? '',
+          displayName: data.display_name ?? '',
+          age: data.age ?? 0,
+          ageGroup: data.age_group ?? 'middle',
+          role: data.role ?? 'student',
+          githubUsername: data.github_username ?? undefined,
+          createdAt: data.created_at,
+        })
+      })
+      .catch(() => { /* Non-fatal */ })
+      .finally(() => setGithubConnecting(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function connectGitHub() {
     if (!GITHUB_CLIENT_ID) { alert('GitHub Client ID not configured in .env'); return }
@@ -92,7 +127,12 @@ export default function Settings() {
             <Github size={18} /> GitHub Integration
           </h3>
           <p className="text-sm text-slate-400 mb-4">Connect GitHub to save your projects and build a coding portfolio!</p>
-          {profile?.githubUsername ? (
+          {githubConnecting ? (
+            <div className="flex items-center gap-3 bg-kc-blue-50 dark:bg-kc-blue-900/20 rounded-2xl p-4">
+              <div className="w-8 h-8 rounded-full bg-kc-blue-400 flex items-center justify-center text-white text-sm font-black animate-pulse">⟳</div>
+              <p className="font-bold text-kc-blue-700 dark:text-kc-blue-300 text-sm">Connecting GitHub…</p>
+            </div>
+          ) : profile?.githubUsername ? (
             <div className="flex items-center gap-3 bg-kc-green-50 dark:bg-kc-green-900/20 rounded-2xl p-4">
               <div className="w-8 h-8 rounded-full bg-kc-green-500 flex items-center justify-center text-white text-sm font-black">✓</div>
               <div>

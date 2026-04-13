@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Zap } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/apiClient'
 import { Button } from '@/components/ui/Button'
 import { getAgeGroup } from '@/lib/utils/age'
 
@@ -19,8 +20,22 @@ export default function Signup() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { display_name: name, age: Number(age) } } })
+    const { data: signUpData, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: name, age: Number(age) } },
+    })
     if (error) { setError(error.message); setLoading(false); return }
+
+    // Seed the profile row via the API (auth guard uses the new session)
+    if (signUpData.session) {
+      try {
+        await apiClient.post('/api/profile/init', { displayName: name, age: Number(age) })
+      } catch {
+        // Non-fatal — profile can be retried on next login
+      }
+    }
+
     navigate('/dashboard')
     setLoading(false)
   }
