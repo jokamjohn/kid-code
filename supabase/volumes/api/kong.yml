@@ -1,0 +1,136 @@
+_format_version: "1.1"
+
+###############################################################################
+# Services & Routes
+###############################################################################
+
+services:
+  ## GoTrue — Auth
+  - name: auth-v1-open
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-open
+        strip_path: true
+        paths:
+          - /auth/v1/verify
+          - /auth/v1/callback
+          - /auth/v1/authorize
+          - /auth/v1/signup
+          - /auth/v1/token
+    plugins:
+      - name: cors
+
+  - name: auth-v1
+    url: http://auth:9999/
+    routes:
+      - name: auth-v1-all
+        strip_path: true
+        paths:
+          - /auth/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
+            - service_role
+
+  ## PostgREST — REST API
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
+            - service_role
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - Authorization:Bearer $(SUPABASE_SERVICE_KEY)
+
+  ## pg-meta — DB introspection (Studio)
+  - name: meta
+    url: http://meta:8080/
+    routes:
+      - name: meta-all
+        strip_path: true
+        paths:
+          - /pg/
+    plugins:
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - service_role
+
+###############################################################################
+# Consumers & Keys
+###############################################################################
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: $(SUPABASE_ANON_KEY)
+    acls:
+      - group: anon
+
+  - username: service_role
+    keyauth_credentials:
+      - key: $(SUPABASE_SERVICE_KEY)
+    acls:
+      - group: service_role
+
+###############################################################################
+# Plugins (global)
+###############################################################################
+
+plugins:
+  - name: cors
+    config:
+      origins:
+        - http://localhost:5173
+        - http://localhost:54323
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+        - HEAD
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - X-Auth-Token
+        - Authorization
+        - apikey
+        - X-Client-Info
+        - Prefer
+      exposed_headers:
+        - X-Auth-Token
+        - Content-Range
+      credentials: true
+      max_age: 3600

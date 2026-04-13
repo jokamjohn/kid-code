@@ -1,7 +1,188 @@
 name: kidcode
 
 services:
-  # ── Frontend (Vite dev server) ──────────────────────────────────────────────
+
+  # ════════════════════════════════════════════════════════════════
+  # Supabase local stack
+  # ════════════════════════════════════════════════════════════════
+
+  db:
+    image: supabase/postgres:15.8.1.085
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      JWT_EXP: 3600
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - kidcode
+
+  db-migrate:
+    image: supabase/postgres:15.8.1.085
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+      - ./supabase/seed.sql:/seed.sql:ro
+    command: >
+      bash -c "
+        echo '⏳ Waiting for auth schema...' &&
+        until psql -c '\dt auth.users' > /dev/null 2>&1; do sleep 2; done &&
+        echo '✅ Auth schema ready. Applying migrations...' &&
+        psql -f /migrations/001_initial_schema.sql &&
+        psql -f /migrations/002_gamification.sql &&
+        psql -f /migrations/003_projects.sql &&
+        psql -f /migrations/004_parent_dashboard.sql &&
+        psql -f /seed.sql &&
+        echo '🎉 Migrations and seed complete!'
+      "
+    networks:
+      - kidcode
+
+  auth:
+    image: supabase/gotrue:v2.186.0
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9999/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "9999:9999"
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:54321
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres?sslmode=disable&search_path=auth
+      GOTRUE_SITE_URL: ${SPA_ORIGIN:-http://localhost:5173}
+      GOTRUE_URI_ALLOW_LIST: ${SPA_ORIGIN:-http://localhost:5173},${SPA_ORIGIN:-http://localhost:5173}/**
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_HOST: ""
+      GOTRUE_LOG_LEVEL: INFO
+    networks:
+      - kidcode
+
+  rest:
+    image: postgrest/postgrest:v14.8
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-token-with-at-least-32-characters-long}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_LOG_LEVEL: info
+    networks:
+      - kidcode
+
+  meta:
+    image: supabase/postgres-meta:v0.96.3
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    networks:
+      - kidcode
+
+  kong:
+    image: kong/kong:3.9.1
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "kong health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "54321:8000"
+      - "8443:8443"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMTQxNzM4MCwiZXhwIjo0Nzc3MDkxMzgwfQ.K5kqIqpxnIU5bkQVqDXiHbY5-HCWvTZ3Gjc6Vq7pJrs}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjIxNDE3MzgwLCJleHAiOjQ3NzcwOTEzODB9.gcEFAhIbNXkFGjfZKH1PD5S26wA4kJdV3kMm6M0rp_E}
+    volumes:
+      - ./supabase/volumes/api/kong.yml:/home/kong/kong.yml:ro
+    networks:
+      - kidcode
+
+  studio:
+    image: supabase/studio:2026.04.08-sha-205cbe7
+    restart: unless-stopped
+    depends_on:
+      kong:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/profile', (r) => process.exit(r.statusCode === 200 ? 0 : 1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "54323:3000"
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DEFAULT_ORGANIZATION_NAME: KidCode Local
+      DEFAULT_PROJECT_NAME: kidcode
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:54321
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMTQxNzM4MCwiZXhwIjo0Nzc3MDkxMzgwfQ.K5kqIqpxnIU5bkQVqDXiHbY5-HCWvTZ3Gjc6Vq7pJrs}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjIxNDE3MzgwLCJleHAiOjQ3NzcwOTEzODB9.gcEFAhIbNXkFGjfZKH1PD5S26wA4kJdV3kMm6M0rp_E}
+      NEXT_PUBLIC_ENABLE_LOGS: "false"
+      NEXT_ANALYTICS_BACKEND_PROVIDER: ""
+    networks:
+      - kidcode
+
+  # ════════════════════════════════════════════════════════════════
+  # Application services
+  # ════════════════════════════════════════════════════════════════
+
   web:
     build:
       context: .
@@ -9,7 +190,7 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./src:/app/src                  # hot-reload source
+      - ./src:/app/src
       - ./public:/app/public
       - ./index.html:/app/index.html
       - ./vite.config.ts:/app/vite.config.ts
@@ -17,18 +198,17 @@ services:
       - ./postcss.config.js:/app/postcss.config.js
       - ./tsconfig.json:/app/tsconfig.json
     environment:
-      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
-      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
-      - VITE_GITHUB_CLIENT_ID=${VITE_GITHUB_CLIENT_ID}
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY:-}
+      - VITE_GITHUB_CLIENT_ID=${VITE_GITHUB_CLIENT_ID:-}
       - VITE_API_BASE_URL=http://localhost:3030
-      # Route proxy through the api service, not localhost
       - API_PROXY_TARGET=http://api:3030
     depends_on:
-      - api
+      kong:
+        condition: service_healthy
     networks:
       - kidcode
 
-  # ── API (NestJS dev server) ─────────────────────────────────────────────────
   api:
     build:
       context: ./api
@@ -37,22 +217,29 @@ services:
     ports:
       - "3030:3030"
     volumes:
-      - ./api/src:/app/src              # hot-reload source
+      - ./api/src:/app/src
       - ./api/tsconfig.json:/app/tsconfig.json
       - ./api/tsconfig.build.json:/app/tsconfig.build.json
       - ./api/nest-cli.json:/app/nest-cli.json
     environment:
       - NODE_ENV=development
       - PORT=3030
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
-      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
       - GITHUB_REDIRECT_URI=${GITHUB_REDIRECT_URI:-http://localhost:3030/api/github/callback}
       - SPA_ORIGIN=${SPA_ORIGIN:-http://localhost:5173}
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
     networks:
       - kidcode
+
+volumes:
+  db-data:
+    driver: local
 
 networks:
   kidcode:

@@ -31,7 +31,7 @@ An interactive web app that teaches kids (ages 6–14) computing basics, HTML, C
 
 ## Docker Development (recommended)
 
-The fastest way to get both servers running without installing Node locally.
+The fastest way to get everything running. Two modes are available: **fully local** (no cloud accounts needed) or **cloud Supabase** (bring your own project).
 
 ### 1. Clone the repo
 
@@ -46,9 +46,51 @@ cd kid-code
 cp .env.docker .env
 ```
 
-Edit `.env` and fill in your Supabase URL, keys, and Anthropic API key.
+Then fill in `ANTHROPIC_API_KEY` (required for the AI tutor) and choose a Supabase mode below.
 
-### 3. Start everything
+---
+
+### Option A — Fully local (zero cloud dependencies)
+
+Spins up a local Supabase stack (Postgres + GoTrue auth + PostgREST + Studio + Kong) alongside the app. No Supabase account needed.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend (Vite) | http://localhost:5173 |
+| API (NestJS) | http://localhost:3030/api |
+| Supabase Studio | http://localhost:54323 |
+| Supabase API gateway | http://localhost:54321 |
+| Postgres (direct) | localhost:54322 |
+
+**Test credentials** (created by seed.sql automatically):
+| Email | Password | Role |
+|---|---|---|
+| `student@kidcode.local` | `password123` | student |
+| `parent@kidcode.local` | `password123` | parent |
+
+**Reset the local database:**
+```bash
+docker compose down -v   # removes the db-data volume
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+```
+
+---
+
+### Option B — Cloud Supabase
+
+Edit `.env` and fill in your cloud Supabase credentials:
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+Then start normally:
 
 ```bash
 docker compose up --build
