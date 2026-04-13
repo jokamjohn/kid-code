@@ -31,7 +31,7 @@ An interactive web app that teaches kids (ages 6–14) computing basics, HTML, C
 
 ## Docker Development (recommended)
 
-The fastest way to get both servers running without installing Node locally.
+The fastest way to get everything running. Two modes: **fully local** (no cloud accounts needed) or **cloud Supabase** (bring your own project).
 
 ### 1. Clone the repo
 
@@ -43,15 +43,49 @@ cd kid-code
 ### 2. Configure environment
 
 ```bash
-cp .env.docker .env
+make env          # copies .env.docker → .env
 ```
 
-Edit `.env` and fill in your Supabase URL, keys, and Anthropic API key.
+Then fill in `ANTHROPIC_API_KEY` (required for the AI tutor) and choose a mode below.
 
-### 3. Start everything
+---
+
+### Option A — Fully local (zero cloud dependencies)
+
+Spins up a local Supabase stack (Postgres + GoTrue auth + PostgREST + Studio + Kong) alongside the app. No Supabase account needed.
 
 ```bash
-docker compose up --build
+make dev-local
+```
+
+| Service | URL |
+|---|---|
+| Frontend (Vite) | http://localhost:5173 |
+| API (NestJS) | http://localhost:3030/api |
+| Supabase Studio | http://localhost:54323 |
+| Supabase API gateway | http://localhost:54321 |
+| Postgres (direct) | localhost:54322 |
+
+**Test credentials** (created by `seed.sql` automatically):
+| Email | Password | Role |
+|---|---|---|
+| `student@kidcode.local` | `password123` | student |
+| `parent@kidcode.local` | `password123` | parent |
+
+**Reset the local database:**
+```bash
+make down-clean   # stops containers and removes the db-data volume
+make dev-local    # restarts fresh with migrations re-applied
+```
+
+---
+
+### Option B — Cloud Supabase
+
+Edit `.env` and fill in your cloud Supabase credentials, then:
+
+```bash
+make dev
 ```
 
 | Service | URL |
@@ -59,31 +93,31 @@ docker compose up --build
 | Frontend (Vite) | http://localhost:5173 |
 | API (NestJS) | http://localhost:3030/api |
 
-Both servers support **hot reload** — edit files locally and changes reflect instantly inside the containers.
+Both servers support **hot reload** — edit files locally and changes reflect instantly.
 
-### Useful Docker commands
+### Make commands
 
-```bash
-# Start in background
-docker compose up -d
+| Command | Description |
+|---|---|
+| `make env` | Copy `.env.docker` → `.env` (first-time setup) |
+| `make dev-local` | Start everything with local Supabase (no cloud needed) |
+| `make dev` | Start with cloud Supabase credentials from `.env` |
+| `make dev-bg` | Start in the background (detached) |
+| `make down` | Stop all containers |
+| `make down-clean` | Stop + delete the local Supabase database volume |
+| `make logs` | Tail all logs |
+| `make logs-web` | Tail frontend logs |
+| `make logs-api` | Tail API logs |
+| `make build` | Rebuild all images (no cache) |
+| `make migrate` | Re-run migrations against local DB |
+| `make db-shell` | Open a psql shell on the local database |
+| `make add PKG=x` | Install a frontend npm package |
+| `make add-api PKG=x` | Install an API npm package |
+| `make lint` | Lint the frontend |
+| `make lint-api` | Lint the API |
+| `make test-api` | Run API unit tests |
 
-# View logs
-docker compose logs -f
-docker compose logs -f api   # API only
-docker compose logs -f web   # Frontend only
-
-# Rebuild after adding npm packages
-docker compose up --build
-
-# Stop everything
-docker compose down
-
-# Install a new frontend package
-docker compose run --rm web npm install <package>
-
-# Install a new API package
-docker compose run --rm api npm install <package>
-```
+Run `make help` to see all commands with descriptions.
 
 ---
 

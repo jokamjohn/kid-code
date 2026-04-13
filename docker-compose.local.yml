@@ -1,0 +1,18 @@
+# Local Supabase override
+# Apply with: docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+#
+# This file rewires the api and web services to talk to the local
+# Supabase stack (kong + auth + rest) instead of a cloud project.
+
+services:
+  api:
+    environment:
+      # NestJS talks to Kong inside Docker via service name
+      - SUPABASE_URL=http://kong:8000
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjIxNDE3MzgwLCJleHAiOjQ3NzcwOTEzODB9.gcEFAhIbNXkFGjfZKH1PD5S26wA4kJdV3kMm6M0rp_E}
+
+  web:
+    environment:
+      # Browser talks to Kong via the host-exposed port (localhost:54321)
+      - VITE_SUPABASE_URL=http://localhost:54321
+      - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTYyMTQxNzM4MCwiZXhwIjo0Nzc3MDkxMzgwfQ.K5kqIqpxnIU5bkQVqDXiHbY5-HCWvTZ3Gjc6Vq7pJrs}
