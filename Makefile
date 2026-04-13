@@ -1,5 +1,6 @@
 .PHONY: dev dev-local down down-clean logs logs-web logs-api build \
-        install install-api lint lint-api test-api migrate reset help
+        install install-api lint lint-api test-api migrate reset \
+        config config-local help
 
 # ── Default ───────────────────────────────────────────────────────────────────
 .DEFAULT_GOAL := help
@@ -105,6 +106,16 @@ migrate:
 ## Open a psql shell against the local database
 db-shell:
 	docker compose exec db psql -U postgres -d postgres
+
+# ── Config inspection ─────────────────────────────────────────────────────────
+
+## Print the resolved compose config for cloud mode (shows interpolated env vars)
+config:
+	docker compose config
+
+## Print the resolved compose config for local Supabase mode
+config-local:
+	docker compose -f docker-compose.yml -f docker-compose.local.yml config
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 
