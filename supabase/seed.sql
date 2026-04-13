@@ -5,12 +5,19 @@
 
 -- Insert test users directly into auth.users (bypasses email confirmation)
 -- Passwords are bcrypt of "password123"
+-- Token columns must be '' (not NULL) — GoTrue v2 cannot scan a NULL string.
+
+-- Student user
 INSERT INTO auth.users (
   id,
   instance_id,
   email,
   encrypted_password,
   email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change,
   created_at,
   updated_at,
   raw_app_meta_data,
@@ -18,38 +25,65 @@ INSERT INTO auth.users (
   is_super_admin,
   role,
   aud
-) VALUES
-  (
-    '00000000-0000-0000-0000-000000000001',
-    '00000000-0000-0000-0000-000000000000',
-    'student@kidcode.local',
-    '$2a$10$PnjCBsFqTXkMOtE4kTdcBuCsAt.uyLxcFHfIzfLrqc9ky1k/DLJVG',
-    now(),
-    now(),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"display_name":"Alex Student","age":11}',
-    false,
-    'authenticated',
-    'authenticated'
-  ),
-  (
-    '00000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000000',
-    'parent@kidcode.local',
-    '$2a$10$PnjCBsFqTXkMOtE4kTdcBuCsAt.uyLxcFHfIzfLrqc9ky1k/DLJVG',
-    now(),
-    now(),
-    now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"display_name":"Parent User","age":35}',
-    false,
-    'authenticated',
-    'authenticated'
-  )
-ON CONFLICT (id) DO NOTHING;
+) VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '00000000-0000-0000-0000-000000000000',
+  'student@kidcode.local',
+  '$2a$10$0IibRBkv/7m5GiEIO8Kkt.TnlXqto1fh5JJoDN4P9mBxYhwb/tGb2',
+  now(),
+  '', '', '', '',
+  now(),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"display_name":"Alex Student","age":11}',
+  false,
+  'authenticated',
+  'authenticated'
+) ON CONFLICT (id) DO UPDATE SET
+  confirmation_token    = '',
+  recovery_token        = '',
+  email_change_token_new = '',
+  email_change          = '';
 
--- Profiles (trigger may have already created these; upsert is safe)
+-- Parent user
+INSERT INTO auth.users (
+  id,
+  instance_id,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  confirmation_token,
+  recovery_token,
+  email_change_token_new,
+  email_change,
+  created_at,
+  updated_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  is_super_admin,
+  role,
+  aud
+) VALUES (
+  '00000000-0000-0000-0000-000000000002',
+  '00000000-0000-0000-0000-000000000000',
+  'parent@kidcode.local',
+  '$2a$10$0IibRBkv/7m5GiEIO8Kkt.TnlXqto1fh5JJoDN4P9mBxYhwb/tGb2',
+  now(),
+  '', '', '', '',
+  now(),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"display_name":"Parent User","age":35}',
+  false,
+  'authenticated',
+  'authenticated'
+) ON CONFLICT (id) DO UPDATE SET
+  confirmation_token    = '',
+  recovery_token        = '',
+  email_change_token_new = '',
+  email_change          = '';
+
+-- Profiles (upsert is safe)
 INSERT INTO public.profiles (id, display_name, age, age_group, role)
 VALUES
   ('00000000-0000-0000-0000-000000000001', 'Alex Student', 11, 'middle', 'student'),

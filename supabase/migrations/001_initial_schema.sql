@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username      TEXT UNIQUE,
   display_name  TEXT,
-  age           INTEGER CHECK (age BETWEEN 6 AND 18),
+  age           INTEGER CHECK (age >= 1),
   age_group     TEXT CHECK (age_group IN ('young', 'middle', 'older')),
   role          TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'parent', 'teacher')),
   parent_id     UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
