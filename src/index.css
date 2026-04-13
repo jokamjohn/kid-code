@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Nunito', ui-sans-serif, system-ui;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-800;
+  }
+
+  .dark body {
+    @apply bg-slate-900 text-slate-100;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl font-bold transition-all duration-200 cursor-pointer select-none;
+  }
+  .btn-primary {
+    @apply btn bg-kc-purple-500 text-white hover:bg-kc-purple-600 active:scale-95 shadow-kid hover:shadow-kid-hover;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-kc-purple-600 border-2 border-kc-purple-200 hover:border-kc-purple-400 hover:bg-kc-purple-50 active:scale-95;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 active:scale-95;
+  }
+  .btn-sm  { @apply px-4 py-2 text-sm; }
+  .btn-md  { @apply px-6 py-3 text-base; }
+  .btn-lg  { @apply px-8 py-4 text-lg; }
+
+  .card {
+    @apply bg-white rounded-3xl shadow-card border border-slate-100 transition-all duration-200;
+  }
+  .card-hover {
+    @apply hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer;
+  }
+
+  .dark .card {
+    @apply bg-slate-800 border-slate-700;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold;
+  }
+
+  .subject-computing { @apply bg-kc-yellow-100 text-kc-yellow-700; }
+  .subject-html      { @apply bg-kc-coral-100 text-kc-coral-700; }
+  .subject-css       { @apply bg-kc-blue-100 text-kc-blue-700; }
+  .subject-javascript{ @apply bg-kc-green-100 text-kc-green-700; }
+
+  .xp-bar {
+    @apply h-3 rounded-full bg-kc-purple-100 overflow-hidden;
+  }
+  .xp-bar-fill {
+    @apply h-full bg-gradient-to-r from-kc-purple-400 to-kc-purple-600 rounded-full transition-all duration-700 ease-out;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-kc-purple-500 to-kc-blue-500 bg-clip-text text-transparent;
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
