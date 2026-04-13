@@ -5,6 +5,8 @@ import { getTopic, getSubject } from '@/lib/content/curriculum'
 import { useAtom } from 'jotai'
 import { lessonCompletionsAtom, userStatsAtom, xpPopAtom } from '@/atoms/progressAtoms'
 import { mascotMoodAtom } from '@/atoms/mascotAtoms'
+import { supabaseUserAtom } from '@/atoms/userAtoms'
+import { apiClient } from '@/lib/apiClient'
 import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import ReactMarkdown from 'react-markdown'
@@ -22,9 +24,10 @@ export default function LearnTopic() {
   const topic = getTopic(subjectId, topicId)
   const subject = getSubject(subjectId)
   const [completions, setCompletions] = useAtom(lessonCompletionsAtom)
-  const [_stats, setStats] = useAtom(userStatsAtom)
+  const [, setStats] = useAtom(userStatsAtom)
   const [, setMood] = useAtom(mascotMoodAtom)
   const [, setXpPop] = useAtom(xpPopAtom)
+  const [user] = useAtom(supabaseUserAtom)
 
   if (!topic || !subject) return (
     <div className="text-center py-20">
@@ -41,20 +44,39 @@ export default function LearnTopic() {
   const idx = topics.findIndex(t => t.id === topicId)
   const next = topics[idx + 1]
 
-  function markComplete() {
+  async function markComplete() {
     if (isComplete) return
     const xp = 50
+
+    // Optimistic UI update
     setCompletions(prev => [...prev, {
-      userId: 'local',
+      userId: user?.id ?? 'local',
       subjectId,
       topicId,
       xpEarned: xp,
       completedAt: new Date().toISOString(),
     }])
-    setStats(prev => ({ ...prev, totalXp: prev.totalXp + xp }))
     setMood('celebrate')
     setXpPop(xp)
     setTimeout(() => setMood('idle'), 3000)
+
+    // Persist via API (non-blocking — UI already updated)
+    if (user) {
+      apiClient.post<{ totalXp: number; level: number }>('/api/progress/lesson', {
+        subject: subjectId,
+        topicId,
+        score: 100,
+        xpEarned: xp,
+      }).then(res => {
+        setStats(prev => ({ ...prev, totalXp: res.totalXp, level: res.level }))
+      }).catch(() => {
+        // Fallback: update stats locally if API unavailable
+        setStats(prev => ({ ...prev, totalXp: prev.totalXp + xp }))
+      })
+    } else {
+      setStats(prev => ({ ...prev, totalXp: prev.totalXp + xp }))
+    }
+
     if (next) navigate(`/learn/${subjectId}/${next.id}`)
     else navigate(`/learn/${subjectId}`)
   }

@@ -5,9 +5,10 @@ import { TutorModule } from './tutor/tutor.module';
 import { GithubModule } from './github/github.module';
 import { ProgressModule } from './progress/progress.module';
 import { ProjectsModule } from './projects/projects.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
-  imports: [TutorModule, GithubModule, ProgressModule, ProjectsModule],
+  imports: [TutorModule, GithubModule, ProgressModule, ProjectsModule, ProfileModule],
   controllers: [AppController],
   providers: [AppService],
 })

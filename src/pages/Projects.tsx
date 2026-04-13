@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Clock, Github, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Modal } from '@/components/ui/Modal'
 import { useNavigate } from 'react-router-dom'
+import { useAtom } from 'jotai'
+import { supabaseUserAtom } from '@/atoms/userAtoms'
+import { apiClient } from '@/lib/apiClient'
 import { cn } from '@/lib/utils/cn'
 import type { Project, ProjectType } from '@/types/project'
 
@@ -18,30 +21,79 @@ const TYPE_STYLES: Record<ProjectType, { bg: string, badge: string, text: string
 
 export default function Projects() {
   const navigate = useNavigate()
+  const [user] = useAtom(supabaseUserAtom)
   const [projects, setProjects] = useState<Project[]>([])
+  const [loading, setLoading] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newType, setNewType] = useState<ProjectType>('full')
+  const [newType, setNewType] = useState<ProjectType>('html')
+  const [creating, setCreating] = useState(false)
 
-  function createProject() {
+  useEffect(() => {
+    if (!user) return
+    setLoading(true)
+    apiClient.get<any[]>('/api/projects')
+      .then(data => setProjects(data.map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        name: p.name,
+        type: p.type as ProjectType,
+        githubRepo: p.github_repo ?? undefined,
+        isPublic: false,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }))))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [user])
+
+  async function createProject() {
     if (!newName.trim()) return
-    const p: Project = {
-      id: Date.now().toString(),
-      userId: 'local',
-      name: newName.trim(),
-      type: newType,
-      isPublic: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    setCreating(true)
+    try {
+      if (user) {
+        const p = await apiClient.post<any>('/api/projects', { name: newName.trim(), type: newType })
+        const project: Project = {
+          id: p.id,
+          userId: p.user_id,
+          name: p.name,
+          type: p.type as ProjectType,
+          isPublic: false,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        }
+        setProjects(prev => [project, ...prev])
+        setShowNew(false)
+        setNewName('')
+        navigate('/playground')
+      } else {
+        // Demo mode — local only
+        const p: Project = {
+          id: Date.now().toString(),
+          userId: 'local',
+          name: newName.trim(),
+          type: newType,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        setProjects(prev => [p, ...prev])
+        setShowNew(false)
+        setNewName('')
+        navigate('/playground')
+      }
+    } catch {
+      // Fallback to local
+    } finally {
+      setCreating(false)
     }
-    setProjects(prev => [p, ...prev])
-    setShowNew(false)
-    setNewName('')
-    navigate('/playground')
   }
 
-  function deleteProject(id: string) {
+  async function deleteProject(id: string) {
     setProjects(prev => prev.filter(p => p.id !== id))
+    if (user) {
+      apiClient.delete(`/api/projects/${id}`).catch(() => {})
+    }
   }
 
   return (
@@ -56,7 +108,9 @@ export default function Projects() {
         </Button>
       </motion.div>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-20 text-slate-400 font-bold">Loading projects…</div>
+      ) : projects.length === 0 ? (
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}>
           <Card className="text-center py-16">
             <div className="text-7xl mb-4">🚀</div>
@@ -70,7 +124,7 @@ export default function Projects() {
       ) : (
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-5">
           {projects.map((p, i) => {
-            const style = TYPE_STYLES[p.type]
+            const style = TYPE_STYLES[p.type] ?? TYPE_STYLES.html
             return (
               <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
                 <div className={cn('rounded-3xl border-2 border-slate-100 dark:border-slate-700 p-5 group cursor-pointer', style.bg)}
@@ -86,7 +140,7 @@ export default function Projects() {
                   <div className="flex gap-2">
                     <Button size="sm" className="flex-1 text-xs">Open</Button>
                     {p.githubRepo
-                      ? <button className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 transition-colors" onClick={e => { e.stopPropagation() }}><Github size={14} /></button>
+                      ? <button className="p-2 rounded-xl bg-white dark:bg-slate-800 text-slate-500 hover:text-slate-800 transition-colors" onClick={e => e.stopPropagation()}><Github size={14} /></button>
                       : null}
                     <button
                       onClick={e => { e.stopPropagation(); deleteProject(p.id) }}
@@ -125,7 +179,7 @@ export default function Projects() {
               ))}
             </div>
           </div>
-          <Button onClick={createProject} disabled={!newName.trim()} className="w-full" size="lg">
+          <Button onClick={createProject} loading={creating} disabled={!newName.trim()} className="w-full" size="lg">
             Create Project
           </Button>
         </div>
