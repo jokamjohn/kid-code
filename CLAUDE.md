@@ -56,6 +56,36 @@ kid-code/
 
 Vite proxies `/api/*` → `localhost:3030` so no CORS issues in dev.
 
+## Git Workflow
+
+**Always create a branch before making any code changes** — no commits directly to `main`, ever.
+
+### Branch naming
+```
+feature/short-description    # new functionality
+fix/short-description        # bug fixes
+chore/short-description      # config, deps, docs, refactors
+```
+
+### Workflow for every task
+```bash
+# 1. Make sure main is up to date
+git checkout main && git pull
+
+# 2. Create and switch to a new branch
+git checkout -b feature/my-feature
+
+# 3. Make changes, commit with a clear message
+git add <files>
+git commit -m "feat: description of what and why"
+
+# 4. Push and open a PR — but DO NOT merge it
+git push -u origin feature/my-feature
+gh pr create --title "..." --body "..."
+```
+
+**Never merge a PR without explicit permission from the user.** After opening a PR, stop and share the PR URL. Wait for the user to review and say "merge it" (or similar) before running `gh pr merge`.
+
 ## Key Conventions
 
 - **State**: All global state is in Jotai atoms under `src/atoms/`. Never use React context for shared state.
